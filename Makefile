@@ -13,7 +13,7 @@ ACME_EMAIL ?= comercial@orbitau.com.br
 
 .DEFAULT_GOAL := help
 
-.PHONY: help env logs-dir validate-prod install build up-d up stop logs traefik-logs bash health health-prod deploy
+.PHONY: help env logs-dir validate-prod install install-container build up-d up stop logs traefik-logs bash health health-prod deploy
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -36,6 +36,9 @@ validate-prod: ## Validate domain/IP and ACME settings required for production H
 
 install: ## Install all local Node.js dependencies
 	npm install --package-lock=false
+
+install-container: ## Install production dependencies inside the running app container
+	$(DOCKER_COMPOSE) exec $(APP_SERVICE) npm install --omit=dev --package-lock=false
 
 build: env logs-dir stop ## Build the application image
 	$(DOCKER_COMPOSE) build $(APP_SERVICE)
