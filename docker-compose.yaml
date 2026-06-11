@@ -1,0 +1,62 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+      target: production
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      STATS_HOST: 0.0.0.0
+      STATS_PORT: 80
+    restart: unless-stopped
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:80/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    volumes:
+      - ./logs:/app/logs
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.stats.rule=Host(`${APP_DOMAIN}`)
+      - traefik.http.routers.stats.entrypoints=web
+      - traefik.http.routers.stats.priority=100
+      - traefik.http.services.stats.loadbalancer.server.port=80
+      - traefik.http.routers.stats-probes.rule=PathPrefix(`/`)
+      - traefik.http.routers.stats-probes.entrypoints=web
+      - traefik.http.routers.stats-probes.priority=1
+      - traefik.http.routers.stats-probes.service=stats
+
+  traefik:
+    image: traefik:v3.1
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --log.level=${TRAEFIK_LOG_LEVEL:-INFO}
+      - --accesslog=true
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "127.0.0.1:${TRAEFIK_DASHBOARD_PORT:-8080}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge

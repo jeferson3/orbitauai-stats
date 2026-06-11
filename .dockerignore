@@ -1,0 +1,12 @@
+.git
+.gitignore
+.idea
+.env
+.env.*
+!.env.example
+dist
+node_modules
+npm-debug.log*
+package-lock.json
+docker-compose*.yaml
+docker-compose*.yml
