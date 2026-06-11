@@ -29,7 +29,7 @@ services:
       - ./logs:/app/logs
     labels:
       - traefik.enable=true
-      - traefik.http.routers.stats.rule=Host(`${APP_DOMAIN}`)
+      - traefik.http.routers.stats.rule=Host(`${APP_DOMAIN:?Set APP_DOMAIN in .env}`) || Host(`localhost`) || Host(`127.0.0.1`)
       - traefik.http.routers.stats.entrypoints=web
       - traefik.http.routers.stats.priority=100
       - traefik.http.services.stats.loadbalancer.server.port=80
@@ -39,7 +39,7 @@ services:
       - traefik.http.routers.stats-probes.service=stats
 
   traefik:
-    image: traefik:v3.1
+    image: traefik:v3.6
     command:
       - --api.dashboard=true
       - --api.insecure=true

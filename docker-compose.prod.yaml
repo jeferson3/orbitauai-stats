@@ -1,0 +1,50 @@
+services:
+  app:
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.stats.loadbalancer.server.port=80
+      - traefik.http.routers.stats.rule=Host(`${APP_DOMAIN:?Set APP_DOMAIN in .env}`)
+      - traefik.http.routers.stats.entrypoints=websecure
+      - traefik.http.routers.stats.priority=100
+      - traefik.http.routers.stats.tls=true
+      - traefik.http.routers.stats.tls.certresolver=letsencrypt
+      - traefik.http.routers.stats-http.rule=Host(`${APP_DOMAIN:?Set APP_DOMAIN in .env}`)
+      - traefik.http.routers.stats-http.entrypoints=web
+      - traefik.http.routers.stats-http.priority=100
+      - traefik.http.routers.stats-http.middlewares=redirect-to-https
+      - traefik.http.routers.stats-http.service=stats
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
+      - traefik.http.routers.stats-probes-http.rule=PathPrefix(`/`)
+      - traefik.http.routers.stats-probes-http.entrypoints=web
+      - traefik.http.routers.stats-probes-http.priority=1
+      - traefik.http.routers.stats-probes-http.service=stats
+      - traefik.http.routers.stats-probes.rule=PathPrefix(`/`)
+      - traefik.http.routers.stats-probes.entrypoints=websecure
+      - traefik.http.routers.stats-probes.priority=1
+      - traefik.http.routers.stats-probes.tls=true
+      - traefik.http.routers.stats-probes.service=stats
+
+  traefik:
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?Set ACME_EMAIL in .env}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.letsencrypt.acme.profile=${ACME_PROFILE:-shortlived}
+      - --certificatesresolvers.letsencrypt.acme.certificatesduration=${ACME_CERTIFICATES_DURATION:-160}
+      - --certificatesresolvers.letsencrypt.acme.disablecommonname=true
+      - --log.level=${TRAEFIK_LOG_LEVEL:-INFO}
+      - --accesslog=true
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - letsencrypt:/letsencrypt
+
+volumes:
+  letsencrypt:
