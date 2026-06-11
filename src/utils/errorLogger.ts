@@ -11,8 +11,8 @@ type ErrorLogDetails = {
 type LogFileName = 'errors.log' | 'http-errors.log' | 'security-probes.log'
 
 const logDirectory = path.resolve(process.env.LOG_DIR ?? 'logs')
-const redactedValue = '[REDACTED]'
-const allowedFilePaths = new Set(['/api/doc.json'])
+const redactedValue = '[********]'
+const allowedFilePaths = new Set([])
 const sensitiveKeys = new Set([
   'authorization',
   'cookie',
