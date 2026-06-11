@@ -12,7 +12,7 @@ type LogFileName = 'errors.log' | 'http-errors.log' | 'security-probes.log'
 
 const logDirectory = path.resolve(process.env.LOG_DIR ?? 'logs')
 const redactedValue = '[********]'
-const allowedFilePaths = new Set([])
+const allowedFilePaths = new Set<string>()
 const sensitiveKeys = new Set([
   'authorization',
   'cookie',
