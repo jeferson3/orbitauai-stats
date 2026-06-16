@@ -160,6 +160,103 @@ const formatMetricValue = (
 
 const PARQUET_MAGIC = 'PAR1'
 const PARQUET_FETCH_TIMEOUT_MS = Number(process.env.PARQUET_FETCH_TIMEOUT_MS ?? 30_000)
+const PARQUET_S3_REGION = process.env.PARQUET_S3_REGION
+  ?? process.env.AWS_REGION
+  ?? process.env.AWS_DEFAULT_REGION
+  ?? 'us-east-1'
+const PARQUET_S3_BUCKETS = (process.env.PARQUET_S3_BUCKETS
+  ?? process.env.PARQUET_S3_BUCKET
+  ?? 'orbitau-prod-videos')
+  .split(',')
+  .map((bucket) => bucket.trim())
+  .filter(Boolean)
+
+type S3ObjectLocation = {
+  bucket: string
+  key: string
+}
+
+const parseS3ObjectFromUrl = (url: string): S3ObjectLocation | null => {
+  try {
+    const parsed = new URL(url)
+    const virtualHostedMatch = parsed.hostname.match(
+      /^(.+)\.s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com$/i,
+    )
+
+    if (virtualHostedMatch?.[1]) {
+      const key = decodeURIComponent(parsed.pathname.replace(/^\//, ''))
+      return key ? { bucket: virtualHostedMatch[1], key } : null
+    }
+
+    if (
+      parsed.hostname === 's3.amazonaws.com'
+      || /^s3[.-][a-z0-9-]+\.amazonaws\.com$/i.test(parsed.hostname)
+    ) {
+      const [bucket, ...rest] = parsed.pathname.replace(/^\//, '').split('/')
+      if (!bucket || rest.length === 0) {
+        return null
+      }
+
+      return {
+        bucket,
+        key: decodeURIComponent(rest.join('/')),
+      }
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
+const shouldUseS3Client = (bucket: string): boolean => {
+  if (process.env.PARQUET_FETCH_MODE === 'http') {
+    return false
+  }
+
+  return PARQUET_S3_BUCKETS.includes(bucket)
+}
+
+const assertParquetBuffer = (buffer: ArrayBuffer): ArrayBuffer => {
+  const bytes = new Uint8Array(buffer)
+
+  if (
+    bytes.length < PARQUET_MAGIC.length * 2
+    || !hasParquetMagic(bytes, 0)
+    || !hasParquetMagic(bytes, bytes.length - PARQUET_MAGIC.length)
+  ) {
+    throw new Error('parquet file invalid (footer != PAR1)')
+  }
+
+  return buffer
+}
+
+const formatS3FetchError = (
+  location: S3ObjectLocation,
+  error: unknown,
+): Error => {
+  const target = `s3://${location.bucket}/${location.key}`
+  const message = error instanceof Error ? error.message : String(error)
+  return new Error(`Falha ao baixar parquet do S3 (${target}): ${message}`)
+}
+
+const loadS3ParquetBuffer = async (
+  location: S3ObjectLocation,
+): Promise<ArrayBuffer> => {
+  const { GetObjectCommand, S3Client } = await import('@aws-sdk/client-s3')
+  const client = new S3Client({ region: PARQUET_S3_REGION })
+  const response = await client.send(new GetObjectCommand({
+    Bucket: location.bucket,
+    Key: location.key,
+  }))
+  const body = await response.Body?.transformToByteArray()
+
+  if (!body?.length) {
+    throw new Error('Objeto parquet vazio no S3')
+  }
+
+  return new Uint8Array(body).buffer
+}
 
 const sanitizeUrlForError = (url: string): string => {
   try {
@@ -200,6 +297,18 @@ const hasParquetMagic = (bytes: Uint8Array, start: number): boolean => {
 }
 
 const loadRemoteParquetBuffer = async (url: string): Promise<ArrayBuffer> => {
+  const s3Object = parseS3ObjectFromUrl(url)
+
+  if (s3Object && shouldUseS3Client(s3Object.bucket)) {
+    try {
+      return assertParquetBuffer(await loadS3ParquetBuffer(s3Object))
+    } catch (error) {
+      if (process.env.PARQUET_FETCH_MODE === 's3') {
+        throw formatS3FetchError(s3Object, error)
+      }
+    }
+  }
+
   let response: Response
 
   try {
@@ -211,23 +320,20 @@ const loadRemoteParquetBuffer = async (url: string): Promise<ArrayBuffer> => {
   }
 
   if (!response.ok) {
+    if (response.status === 403 && s3Object && shouldUseS3Client(s3Object.bucket)) {
+      try {
+        return assertParquetBuffer(await loadS3ParquetBuffer(s3Object))
+      } catch (s3Error) {
+        throw formatS3FetchError(s3Object, s3Error)
+      }
+    }
+
     throw new Error(
       `Falha ao baixar parquet remoto: HTTP ${response.status} (${sanitizeUrlForError(url)})`,
     )
   }
 
-  const buffer = await response.arrayBuffer()
-  const bytes = new Uint8Array(buffer)
-
-  if (
-    bytes.length < PARQUET_MAGIC.length * 2
-    || !hasParquetMagic(bytes, 0)
-    || !hasParquetMagic(bytes, bytes.length - PARQUET_MAGIC.length)
-  ) {
-    throw new Error('parquet file invalid (footer != PAR1)')
-  }
-
-  return buffer
+  return assertParquetBuffer(await response.arrayBuffer())
 }
 
 export async function loadReplayRows(parquetUrl: string): Promise<ReplayRow[]> {
