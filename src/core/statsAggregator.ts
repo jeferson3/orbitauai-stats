@@ -40,10 +40,6 @@ export class StatsAggregator {
       ? this.totalDetections / this.totalFrames
       : 0
 
-    const metadata = row.metadata ? JSON.stringify(row.metadata, (_, value) =>
-      typeof value === 'bigint' ? value.toString() : value
-    ) : null;
-
     return {
       type: 'stats',
       sessionId,
@@ -53,7 +49,7 @@ export class StatsAggregator {
       totalFrames: this.totalFrames,
       totalDetections: this.totalDetections,
       avgObjectsPerFrame,
-      metadata: metadata ? JSON.parse(metadata) : null,
+      metadata: null,
     }
   }
 }

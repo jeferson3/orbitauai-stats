@@ -89,7 +89,21 @@ export class SessionManager {
             || now - this.lastStatsAt >= this.sessionData.targetBroadcastMs
           ) {
             this.lastStatsAt = now
-            this.callbacks.onStats(snapshot)
+
+            if (row.metrics.length === 0) {
+              this.callbacks.onStats(snapshot)
+              return
+            }
+
+            for (const metric of row.metrics) {
+              this.callbacks.onStats({
+                ...snapshot,
+                metadata: {
+                  metric_name: metric.metricName,
+                  metric_value: metric.metricValue,
+                },
+              })
+            }
           }
         },
         onDone: () => {
