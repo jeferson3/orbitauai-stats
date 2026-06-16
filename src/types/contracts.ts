@@ -2,6 +2,13 @@ export type SessionState = 'idle' | 'running' | 'paused' | 'stopped' | 'error'
 
 export type SyncMode = 'timestamp' | 'frame_id'
 
+export type MetricValue = number | string | boolean | null
+
+export type StatsMetadata = {
+  metric_name: string
+  metric_value: MetricValue
+}
+
 export type StatsMessage = {
   type: 'stats'
   sessionId: string
@@ -11,7 +18,7 @@ export type StatsMessage = {
   totalFrames: number
   totalDetections: number
   avgObjectsPerFrame: number
-  metadata: Record<string, unknown>
+  metadata: StatsMetadata | null
 }
 
 export type StatusMessage = {
@@ -39,9 +46,14 @@ export type SessionCurrentResponse = {
   targetBroadcastMs: number | null
 }
 
+export type ReplayMetric = {
+  metricName: string
+  metricValue: MetricValue
+}
+
 export type ReplayRow = {
   frameId: number
   timestampMs: number
   detections: number
-  metadata: Record<string, unknown>
+  metrics: ReplayMetric[]
 }
