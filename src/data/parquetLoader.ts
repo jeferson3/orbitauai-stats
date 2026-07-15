@@ -120,6 +120,18 @@ const SURGICAL_STEP_CODE_LABELS: Record<number, string> = {
 
 const roundToOneDecimal = (value: number): number => Math.round(value * 10) / 10
 
+const roundToFourDecimals = (value: number): number => Math.round(value * 10_000) / 10_000
+
+const TENENGRAD_METRIC = 'tenengrad'
+
+// Metrics stored on a 0-1 scale lose precision with one-decimal rounding.
+const NORMALIZED_FRACTION_METRICS = new Set([
+  'capsulorrhexis_circularity',
+  'capsulorrhexis_size_ratio',
+  'capsulorrhexis_regularity',
+  'phaco_inside_cornea',
+])
+
 const parseStepName = (raw: unknown): string | null => {
   if (typeof raw !== 'string' || !raw.trim()) {
     return null
@@ -152,6 +164,14 @@ const formatMetricValue = (
   }
 
   if (typeof value === 'number' && Number.isFinite(value)) {
+    if (metricName === TENENGRAD_METRIC) {
+      return roundToOneDecimal(value * 100)
+    }
+
+    if (NORMALIZED_FRACTION_METRICS.has(metricName)) {
+      return roundToFourDecimals(value)
+    }
+
     return roundToOneDecimal(value)
   }
 
