@@ -27,6 +27,17 @@ const sessionManager = new SessionManager({
   },
 })
 
+// Registered ahead of the Host-based security check below: load balancer
+// health checks (App Runner, ECS/ALB, ...) hit this path using the target's
+// bare IP as the Host header, which never matches an allow-listed APP_DOMAIN.
+app.get('/health', (_request: Request, response: Response) => {
+  response.status(200).json({ ok: true })
+})
+
+app.get('/api/health', (_request: Request, response: Response) => {
+  response.status(200).json({ ok: true })
+})
+
 app.use(async (request: Request, response: Response, next: NextFunction) => {
   if (await logSecurityProbeIfDetected(request)) {
     response.status(404).json({
@@ -58,14 +69,6 @@ app.get('/', (_request: Request, response: Response) => {
     timeline: '/api/timeline',
     websocket: '/ws/stats',
   })
-})
-
-app.get('/health', (_request: Request, response: Response) => {
-  response.status(200).json({ ok: true })
-})
-
-app.get('/api/health', (_request: Request, response: Response) => {
-  response.status(200).json({ ok: true })
 })
 
 app.use(async (request: Request, response: Response) => {
