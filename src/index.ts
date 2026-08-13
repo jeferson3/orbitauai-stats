@@ -3,6 +3,7 @@ import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { SessionManager } from './core/sessionManager.js'
 import { registerSessionRoutes } from './routes/sessionRoutes.js'
+import { registerTimelineRoutes } from './routes/timelineRoutes.js'
 import {
   logHttpError,
   logSecurityProbeIfDetected,
@@ -46,6 +47,7 @@ app.use(cors({
 }))
 
 registerSessionRoutes(app, sessionManager)
+registerTimelineRoutes(app)
 
 app.get('/', (_request: Request, response: Response) => {
   response.status(200).json({
@@ -53,6 +55,7 @@ app.get('/', (_request: Request, response: Response) => {
     service: 'orbitau-stats-backend',
     health: '/health',
     currentSession: '/api/session/current',
+    timeline: '/api/timeline',
     websocket: '/ws/stats',
   })
 })

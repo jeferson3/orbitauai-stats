@@ -57,3 +57,32 @@ export type ReplayRow = {
   detections: number
   metrics: ReplayMetric[]
 }
+
+/** A single non-summary metric reading, flattened across the whole parquet. */
+export type TimelineEvent = {
+  frameId: number
+  metricName: string
+  value: MetricValue
+}
+
+/** Contiguous run of frames sharing the same `surgical_step` reading. */
+export type TimelineStepSegment = {
+  step: string
+  startFrame: number
+  endFrame: number
+  isLazy: boolean
+}
+
+/**
+ * Full-video replacement for the WebSocket replay: everything the frontend
+ * needs is fetched once and frames are derived locally from
+ * `video.currentTime * fps`, instead of a wall-clock-driven, forward-only
+ * stream. See `timelineBuilder.ts`.
+ */
+export type TimelineResponse = {
+  fps: number
+  totalFrames: number
+  events: TimelineEvent[]
+  summary: Record<string, MetricValue>
+  stepSegments: TimelineStepSegment[]
+}
