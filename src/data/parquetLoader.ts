@@ -132,6 +132,31 @@ const NORMALIZED_FRACTION_METRICS = new Set([
   'phaco_inside_cornea',
 ])
 
+const TENENGRAD_RAW_P01 = 0.046
+const TENENGRAD_RAW_P99 = 0.147
+
+const normalizeTenengradRaw = (raw0To1: number): number => {
+  const lo = TENENGRAD_RAW_P01
+  const hi = TENENGRAD_RAW_P99
+  if (hi <= lo) {
+    return Math.max(0, Math.min(100, raw0To1 * 100))
+  }
+  const pct = ((raw0To1 - lo) / (hi - lo)) * 100
+  return Math.max(0, Math.min(100, pct))
+}
+
+/** Mirrors backend `metric_calibration.normalize_tenengrad_value`. */
+const normalizeTenengradValue = (value: number): number => {
+  let scaled = value
+  while (scaled > 100) {
+    scaled /= 100
+  }
+  if (scaled <= 1.5) {
+    return normalizeTenengradRaw(scaled)
+  }
+  return Math.max(0, Math.min(100, scaled))
+}
+
 const parseStepName = (raw: unknown): string | null => {
   if (typeof raw !== 'string' || !raw.trim()) {
     return null
@@ -165,9 +190,7 @@ const formatMetricValue = (
 
   if (typeof value === 'number' && Number.isFinite(value)) {
     if (metricName === TENENGRAD_METRIC) {
-      return roundToOneDecimal(
-        typeof value === 'number' && value <= 1.5 ? value * 100 : value,
-      )
+      return roundToOneDecimal(normalizeTenengradValue(value))
     }
 
     if (NORMALIZED_FRACTION_METRICS.has(metricName)) {
