@@ -49,6 +49,8 @@ export type SessionCurrentResponse = {
 export type ReplayMetric = {
   metricName: string
   metricValue: MetricValue
+  /** Raw parquet `metadata` JSON string, when present (summary score units, etc.). */
+  metadataRaw?: string | null
 }
 
 export type ReplayRow = {

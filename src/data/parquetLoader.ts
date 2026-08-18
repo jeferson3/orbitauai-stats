@@ -358,6 +358,10 @@ export async function loadReplayRows(parquetUrl: string): Promise<ReplayRow[]> {
           ? parseStepName(row[selectedMetricMetaColumn])
           : null
 
+        const metadataRaw = selectedMetricMetaColumn
+          ? row[selectedMetricMetaColumn]
+          : null
+
         metric = {
           metricName: rawName,
           metricValue: formatMetricValue(
@@ -365,6 +369,7 @@ export async function loadReplayRows(parquetUrl: string): Promise<ReplayRow[]> {
             toMetricValue(row[selectedMetricValueColumn]),
             stepName,
           ),
+          metadataRaw: typeof metadataRaw === 'string' ? metadataRaw : null,
         }
       }
     }
