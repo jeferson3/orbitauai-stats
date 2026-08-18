@@ -165,7 +165,9 @@ const formatMetricValue = (
 
   if (typeof value === 'number' && Number.isFinite(value)) {
     if (metricName === TENENGRAD_METRIC) {
-      return roundToOneDecimal(value * 100)
+      return roundToOneDecimal(
+        typeof value === 'number' && value <= 1.5 ? value * 100 : value,
+      )
     }
 
     if (NORMALIZED_FRACTION_METRICS.has(metricName)) {
